@@ -54,51 +54,82 @@ function Board(props) {
         1: {a: 'wr', b: 'wn', c: 'wb', d: 'wq', e: 'wk', f: 'wb', g: 'wn', h: 'wr'},
     })
 
+    // const [pieces, set_pieces] = useState({
+    //     a8: 'br', 
+    //     b8: 'bn',
+    //     c8: 'bb',
+    //     d8: 'bq',
+    //     e8: 'bk',
+    //     f8: 'bb',
+    //     g8: 'bn',
+    //     h8: 'br',
+    //     a7: 'bp',
+    //     b7: 'bp',
+    //     c7: 'bp',
+    //     d7: 'bp',
+    //     e7: 'bp',
+    //     f7: 'bp',
+    //     g7: 'bp',
+    //     h7: 'bp',
+    //     a2: 'wp',
+    //     b2: 'wp',
+    //     c2: 'wp',
+    //     d2: 'wp',
+    //     e2: 'wp',
+    //     f2: 'wp',
+    //     g2: 'wp',
+    //     h2: 'wp',
+    //     a1: 'wr', 
+    //     b1: 'wn',
+    //     c1: 'wb',
+    //     d1: 'wq',
+    //     e1: 'wk',
+    //     f1: 'wb',
+    //     g1: 'wn',
+    //     h1: 'wr'
+    // })
+
     const [selected_piece, set_selected_piece] = useState(null)
 
-
     function square_click(rank, num) {
-        if (selected_piece) {
-            set_board(prev => ({
-                ...prev,
-                [num]: {
-                    ...prev[num],
-                    [rank]: selected_piece.piece,
-                },
-                [selected_piece.prev_num]: {
-                    ...prev[selected_piece.prev_num],
-                    [selected_piece.prev_rank]: ' '
-                }
-            }))
-
-            set_selected_piece(null)
-        } else {
+        if (!selected_piece) {
             set_selected_piece({
                 piece: board[num][rank],
-                prev_rank: rank,
-                prev_num: num
+                rank: rank,
+                num: num
             })
-        }
-
-
-    }
-
-    function drop_piece() {
-        console.log("Dropping")
-
-        set_board(prev => ({
-            ...prev,
-            [grabbed_piece.prev_num]: {
-                ...prev[grabbed_piece.prev_num],
-                [grabbed_piece.prev_rank]: grabbed_piece.piece
+        } else if (board[selected_piece.num][selected_piece.rank] !== ' ') {
+            // TODO: check for valid move
+            if (selected_piece.num === num) {
+                set_board(prev => ({
+                    ...prev,
+                    [selected_piece.num]: {
+                        ...prev[selected_piece.num],
+                        [selected_piece.rank]: ' ',
+                        [rank]: selected_piece.piece
+                    },
+                }))
+            } else {
+                set_board(prev => ({
+                    ...prev,
+                    [selected_piece.num]: {
+                        ...prev[selected_piece.num],
+                        [selected_piece.rank]: ' '
+                    },
+                    [num]: {
+                        ...prev[num],
+                        [rank]: selected_piece.piece,
+                    }
+                }))
             }
-        }))
 
-        set_grabbed_piece(null)
-    }
 
-    function high_light_square(rank, num) {
+            let temp_board = 
 
+            set_selected_piece(null)
+        } else if (board[selected_piece.num][selected_piece.rank] === ' ') {
+            set_selected_piece(null)
+        }
     }
     
     return <div id='board' style={{display: 'inline-flex', borderRadius: '5px', overflow: 'hidden'}}>
@@ -106,6 +137,8 @@ function Board(props) {
             {
                 rows.map((num, r) => {
                     return cols.map((rank, c) => {
+                        const piece_is_selected = selected_piece && selected_piece.num === num && selected_piece.rank === rank
+                        const color = piece_is_selected ? yellow_tint(color_of_cell(num, rank)) : color_of_cell(num, rank)
                         return <rect
                             id={`${rank}${num}`}
                             key={`${rank}${num}`}
@@ -113,7 +146,7 @@ function Board(props) {
                             height={size}
                             x={c * size}
                             y={r * size}
-                            fill={color_of_cell(num, rank)}
+                            fill={color}
                             onClick={() => square_click(rank, num)}
                         />
                     })
@@ -159,7 +192,7 @@ function Board(props) {
                             width={size}
                             x={c * size}
                             y={r * size}
-                            style={{pointerEvents: 'none'}}
+                            style={{pointerEvents: 'none', transition: 'transform 0.5s linear'}}
                         />
                     })
                 })
