@@ -54,41 +54,6 @@ function Board(props) {
         1: {a: 'wr', b: 'wn', c: 'wb', d: 'wq', e: 'wk', f: 'wb', g: 'wn', h: 'wr'},
     })
 
-    // const [pieces, set_pieces] = useState({
-    //     a8: 'br', 
-    //     b8: 'bn',
-    //     c8: 'bb',
-    //     d8: 'bq',
-    //     e8: 'bk',
-    //     f8: 'bb',
-    //     g8: 'bn',
-    //     h8: 'br',
-    //     a7: 'bp',
-    //     b7: 'bp',
-    //     c7: 'bp',
-    //     d7: 'bp',
-    //     e7: 'bp',
-    //     f7: 'bp',
-    //     g7: 'bp',
-    //     h7: 'bp',
-    //     a2: 'wp',
-    //     b2: 'wp',
-    //     c2: 'wp',
-    //     d2: 'wp',
-    //     e2: 'wp',
-    //     f2: 'wp',
-    //     g2: 'wp',
-    //     h2: 'wp',
-    //     a1: 'wr', 
-    //     b1: 'wn',
-    //     c1: 'wb',
-    //     d1: 'wq',
-    //     e1: 'wk',
-    //     f1: 'wb',
-    //     g1: 'wn',
-    //     h1: 'wr'
-    // })
-
     const [selected_piece, set_selected_piece] = useState(null)
 
     function square_click(rank, num) {
@@ -122,9 +87,6 @@ function Board(props) {
                     }
                 }))
             }
-
-
-            let temp_board = 
 
             set_selected_piece(null)
         } else if (board[selected_piece.num][selected_piece.rank] === ' ') {
