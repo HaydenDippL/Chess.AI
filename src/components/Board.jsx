@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 
+import { invoke } from "@tauri-apps/api/tauri";
+
 import wp from '../assets/pieces/wp.png'
 import wr from '../assets/pieces/wr.png'
 import wn from '../assets/pieces/wn.png'
@@ -19,77 +21,113 @@ const black_board_color = '#739552'
 
 function get_piece_png(piece) {
     switch(piece) {
-        case 'wp': return wp
-        case 'wr': return wr
-        case 'wn': return wn
-        case 'wb': return wb
-        case 'wq': return wq
-        case 'wk': return wk
-        case 'bp': return bp
-        case 'br': return br
-        case 'bn': return bn
-        case 'bb': return bb
-        case 'bq': return bq
-        case 'bk': return bk
+        case 'P': return wp
+        case 'R': return wr
+        case 'N': return wn
+        case 'B': return wb
+        case 'Q': return wq
+        case 'K': return wk
+
+        case 'p': return bp
+        case 'r': return br
+        case 'n': return bn
+        case 'b': return bb
+        case 'q': return bq
+        case 'k': return bk
     }
 }
 
 function Board(props) {
     let white = true
-    const rows = Array.from({ length: 8 }, (_, index) => 8 - index)
-    const cols = Array.from({ length: 8 }, (_, index) => String.fromCharCode('a'.charCodeAt(0) + index))
+    const ranks = Array.from({ length: 8 }, (_, index) => 8 - index)
+    const files = Array.from({ length: 8 }, (_, index) => String.fromCharCode('a'.charCodeAt(0) + index))
     if (!white) {
-        rows.reverse()
-        cols.reverse()
+        ranks.reverse()
+        files.reverse()
     }
 
-    const [board, set_board] = useState({
-        8: {a: 'br', b: 'bn', c: 'bb', d: 'bq', e: 'bk', f: 'bb', g: 'bn', h: 'br'},
-        7: {a: 'bp', b: 'bp', c: 'bp', d: 'bp', e: 'bp', f: 'bp', g: 'bp', h: 'bp'},
-        6: {a: ' ',  b: ' ',  c: ' ',  d: ' ',  e: ' ',  f: ' ',  g: ' ',  h: ' ' },
-        5: {a: ' ',  b: ' ',  c: ' ',  d: ' ',  e: ' ',  f: ' ',  g: ' ',  h: ' ' },
-        4: {a: ' ',  b: ' ',  c: ' ',  d: ' ',  e: ' ',  f: ' ',  g: ' ',  h: ' ' },
-        3: {a: ' ',  b: ' ',  c: ' ',  d: ' ',  e: ' ',  f: ' ',  g: ' ',  h: ' ' },
-        2: {a: 'wp', b: 'wp', c: 'wp', d: 'wp', e: 'wp', f: 'wp', g: 'wp', h: 'wp'},
-        1: {a: 'wr', b: 'wn', c: 'wb', d: 'wq', e: 'wk', f: 'wb', g: 'wn', h: 'wr'},
+    const [chess, set_chess] = useState({
+        board: [
+            /* 8 */ ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], // black
+            /* 7 */ ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'], // black
+            /* 6 */ [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+            /* 5 */ [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+            /* 4 */ [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+            /* 3 */ [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+            /* 2 */ ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'], // white
+            /* 1 */ ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'], // white
+            /*        a    b    c    d    e    f    g    h */
+        ],
+        a8r_still: true,
+        bk_still: true,
+        h8r_still: true,
+        a1r_still: true,
+        wk_still: true,
+        h1r_still: true,
+        prev_move_double_pawn: ' ', // file of pawn
+        bk: 'e8',
+        wk: 'e1'
     })
+
+    function rank_to_index(rank) { return 8 - rank }
+    function file_to_index(file) { return file.charCodeAt(0) - 'a'.charCodeAt(0) }
 
     const [selected_piece, set_selected_piece] = useState(null)
 
-    function square_click(rank, num) {
+    function square_click(file, rank) {
         if (!selected_piece) {
-            set_selected_piece({
-                piece: board[num][rank],
-                rank: rank,
-                num: num
-            })
-        } else if (board[selected_piece.num][selected_piece.rank] !== ' ') {
-            // TODO: check for valid move
-            if (selected_piece.num === num) {
-                set_board(prev => ({
-                    ...prev,
-                    [selected_piece.num]: {
-                        ...prev[selected_piece.num],
-                        [selected_piece.rank]: ' ',
-                        [rank]: selected_piece.piece
-                    },
-                }))
-            } else {
-                set_board(prev => ({
-                    ...prev,
-                    [selected_piece.num]: {
-                        ...prev[selected_piece.num],
-                        [selected_piece.rank]: ' '
-                    },
-                    [num]: {
-                        ...prev[num],
-                        [rank]: selected_piece.piece,
-                    }
-                }))
-            }
+            // if user selects an empty square do nothing
+            if (chess.board[rank_to_index(rank)][file_to_index(file)] === ' ') return
 
+            // if user selects a square with a piece select it
+            set_selected_piece({
+                piece: chess.board[rank_to_index(rank)][file_to_index(file)],
+                file: file,
+                rank: rank
+            })
+        } else if (selected_piece.rank === rank && selected_piece.file === file) {
+            // use unselects piece
             set_selected_piece(null)
-        } else if (board[selected_piece.num][selected_piece.rank] === ' ') {
+        } else {
+            // check valid move
+            invoke('valid_move', chess)
+                .then(board => console.log({
+                    ...board,
+                    from_rank: selected_piece.rank,
+                    from_file: selected_piece.file,
+                    to_rank: rank,
+                    to_file: file
+                }))
+
+            set_chess(prev_state => {
+                // move the piece
+                prev_state.board[rank_to_index(selected_piece.rank)][file_to_index(selected_piece.file)] = ' '
+                prev_state.board[rank_to_index(rank)][file_to_index(file)] = selected_piece.piece
+
+                // change castling state
+                if (selected_piece.piece === 'wk') {
+                    prev_state.wk_still = false
+                    prev_state.wk = `${file}${rank}`
+                } else if (prev_state.a1r_still && selected_piece.piece === 'wr' && 
+                    selected_piece.file === 'a' && selected_piece.rank === 1) {
+                        prev_state.a1r_still = false
+                } else if (prev_state.h1r_still && selected_piece.piece === 'wr' && 
+                    selected_piece.file === 'h' && selected_piece.rank === 1) {
+                        prev_state.h1r_still = false
+                } else if (selected_piece.piece === 'bk') {
+                    prev_state.bk_still = false
+                    prev_state.bk = `${file}${rank}`
+                } else if (prev_state.a8r_still && selected_piece.piece === 'br' && 
+                    selected_piece.file === 'a' && selected_piece.rank === 8) {
+                        prev_state.a8r_still = false
+                } else if (prev_state.h8r_still && selected_piece.piece === 'br' && 
+                    selected_piece.file === 'h' && selected_piece.rank === 8) {
+                        prev_state.h8r_still = false
+                }
+
+                return prev_state
+            })
+
             set_selected_piece(null)
         }
     }
@@ -97,65 +135,65 @@ function Board(props) {
     return <div id='board' style={{display: 'inline-flex', borderRadius: '5px', overflow: 'hidden'}}>
         <svg width={8 * size} height={8 * size}>
             {
-                rows.map((num, r) => {
-                    return cols.map((rank, c) => {
-                        const piece_is_selected = selected_piece && selected_piece.num === num && selected_piece.rank === rank
-                        const color = piece_is_selected ? yellow_tint(color_of_cell(num, rank)) : color_of_cell(num, rank)
+                ranks.map((rank, r) => {
+                    return files.map((file, c) => {
+                        const piece_is_selected = selected_piece && selected_piece.rank === rank && selected_piece.file === file
+                        const color = piece_is_selected ? yellow_tint(color_of_cell(file, rank)) : color_of_cell(file, rank)
                         return <rect
-                            id={`${rank}${num}`}
-                            key={`${rank}${num}`}
+                            id={`${file}${rank}`}
+                            key={`${file}${rank}`}
                             width={size}
                             height={size}
                             x={c * size}
                             y={r * size}
                             fill={color}
-                            onClick={() => square_click(rank, num)}
+                            onClick={() => square_click(file, rank)}
                         />
                     })
                 })
             }
             {
-                cols.map((ch, c) => {
+                files.map((file, r) => {
                     return <text
-                        key={ch}
-                        x={(c + 0.8) * size}
+                        key={file}
+                        x={(r + 0.8) * size}
                         y={7.9 * size}
                         fontWeight={600}
                         fontSize='24'
-                        fill={c % 2 == 1 ? black_board_color : white_board_color}
+                        fill={r % 2 == 1 ? black_board_color : white_board_color}
                     >
-                        {ch}
+                        {file}
                     </text>
                 })
             }
             {
-                rows.map((num, r) => {
+                ranks.map((rank, r) => {
                     return <text
-                        key={num}
+                        key={rank}
                         x={size * 0.07}
                         y={r * size + size * 0.25}
                         fontWeight={600}
                         fontSize='24'
                         fill={r % 2 == 0 ? black_board_color : white_board_color}
                     >
-                        {num}
+                        {rank}
                     </text>
                 })
             }
             {
-                rows.map((num, r) => {
-                    return cols.map((rank, c) => {
-                        let piece = board[num][rank]
+                ranks.map((rank, r) => {
+                    return files.map((file, c) => {
+                        let piece = chess.board[rank_to_index(rank)][file_to_index(file)]
                         if (piece !== ' ')
-                        return <image
-                            key={`${rank}${num}`}
-                            href={get_piece_png(piece)}
-                            height={size}
-                            width={size}
-                            x={c * size}
-                            y={r * size}
-                            style={{pointerEvents: 'none', transition: 'transform 0.5s linear'}}
-                        />
+                            return <image
+                                key={`${file}${rank}`}
+                                href={get_piece_png(piece)}
+                                height={size}
+                                width={size}
+                                x={c * size}
+                                y={r * size}
+                                style={{pointerEvents: 'none', transition: 'transform 0.5s linear'}}
+                            />
                     })
                 })
             }
@@ -163,8 +201,8 @@ function Board(props) {
     </div>
 }
 
-function color_of_cell(num, rank) {
-    return ((rank.charCodeAt(0) - 'a'.charCodeAt(0)) + num) % 2 == 1 ? black_board_color : white_board_color
+function color_of_cell(file, rank) {
+    return ((file.charCodeAt(0) - 'a'.charCodeAt(0)) + rank) % 2 == 1 ? black_board_color : white_board_color
 }
 
 function yellow_tint(color) {
